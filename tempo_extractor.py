@@ -1,7 +1,7 @@
 import numpy as np
 import librosa
 import matplotlib
-matplotlib.use('Agg') # Use non-interactive backend for server safety
+matplotlib.use('Agg') # Use non-interactive backend safe for headless cloud servers
 import matplotlib.pyplot as plt
 import os
 
@@ -17,7 +17,8 @@ class TimeSignatureResult:
         self.alternatives = alternatives
         self.downbeat_times = downbeat_times
 
-def load_audio(file_path, sr=22050):
+def load_audio(file_path, sr=11025):
+    """Loads audio with a lower sample rate to conserve RAM on free cloud tiers."""
     y, sr = librosa.load(file_path, sr=sr, mono=True)
     return y, sr
 
@@ -30,30 +31,34 @@ def analyze_beats(y, sr, hop_length=512):
         
     beat_times = librosa.frames_to_time(beat_frames, sr=sr, hop_length=hop_length)
     
-    # Compute spectral flux onset strength
+    # Compute spectral flux onset strength for meter grouping
     onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
     onset_times = librosa.frames_to_time(np.arange(len(onset_env)), sr=sr, hop_length=hop_length)
     
     return tempo, beat_times, onset_env, onset_times
 
 def generate_dsp_plots(y, sr, beat_times, onset_env, output_path="static/dsp_plot.png"):
-    """Generates and saves a clean Matplotlib plot of the onset envelope and beat markers."""
-    plt.figure(figsize=(10, 4))
+    """Generates a lightweight Matplotlib plot and aggressively frees memory."""
+    plt.figure(figsize=(6, 2.5), dpi=100)
     times = librosa.times_like(onset_env, sr=sr)
     
     plt.plot(times, onset_env, label='Onset Strength', color='purple', alpha=0.8)
-    plt.vlines(beat_times, 0, onset_env.max(), color='cyan', linestyle='--', alpha=0.7, label='Beats')
+    plt.vlines(beat_times, 0, onset_env.max() if len(onset_env) > 0 else 1, color='cyan', linestyle='--', alpha=0.7, label='Beats')
     
-    plt.title('SwarSync DSP: Spectral Flux Onset Strength & Beat Tracking')
-    plt.xlabel('Time (seconds)')
-    plt.ylabel('Amplitude')
-    plt.legend(loc='upper right')
+    plt.title('SwarSync DSP Analysis', fontsize=10)
+    plt.xlabel('Time (s)', fontsize=8)
+    plt.ylabel('Amplitude', fontsize=8)
+    plt.legend(loc='upper right', fontsize=8)
     plt.tight_layout()
     
-    # Ensure static directory exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    plt.savefig(output_path, dpi=150)
-    plt.close()
+    plt.savefig(output_path)
+    
+    # CRITICAL: Clear figure and close to prevent memory leaks on server
+    plt.clf()
+    plt.cla()
+    plt.close('all')
+    
     return output_path
 
 def estimate_time_signature(y, sr, onset_env, beat_times, hop_length=512, max_bar_pulses=64):
