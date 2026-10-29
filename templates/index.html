@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwarSync - Music Learning & Vocal Assessment Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">Swar<span>Sync</span></div>
+        <p class="subtitle">Understand the music. Improve your voice.</p>
+    </header>
+
+    <main class="container">
+        <!-- Mode Selection Tabs -->
+        <div class="mode-tabs">
+            <button class="tab-btn active" onclick="switchMode('learn')">1. Learn a Song (Tempo & Meter)</button>
+            <button class="tab-btn" onclick="switchMode('sing')">2. Analyse My Singing (Vocal DSP)</button>
+        </div>
+
+        <!-- MODE 1: LEARN A SONG -->
+        <section id="mode-learn" class="card active-card">
+            <h2>Learn a Song: Tempo & Time Signature Analyzer</h2>
+            <p class="desc">Upload an audio track (MP3/WAV) to extract its tempo, beat markers, downbeats, and metric structure using spectral flux DSP algorithms.</p>
+            
+            <div class="upload-zone" onclick="document.getElementById('audio-file').click()">
+                <input type="file" id="audio-file" accept="audio/*" style="display: none;" onchange="handleFileSelect(event)">
+                <div class="upload-prompt">
+                    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    <p id="file-label">Click to upload or drag & drop song audio (.mp3, .wav)</p>
+                </div>
+            </div>
+
+            <button class="action-btn" id="analyze-btn" onclick="analyzeSong()" disabled>Analyse Song</button>
+
+            <div id="loader" class="loader" style="display: none;">
+                <div class="spinner"></div>
+                <p>Processing audio through Librosa STFT & spectral flux pipeline...</p>
+            </div>
+
+            <div id="results-container" class="results-container" style="display: none;">
+                <h3>Analysis Results</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-title">Estimated Tempo</span>
+                        <span class="metric-value" id="res-tempo">-</span>
+                        <span class="metric-unit">BPM</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-title">Time Signature</span>
+                        <span class="metric-value" id="res-ts">-</span>
+                        <span class="metric-unit" id="res-kind">Meter</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-title">Song Duration</span>
+                        <span class="metric-value" id="res-duration">-</span>
+                        <span class="metric-unit">Seconds</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-title">Total Beats</span>
+                        <span class="metric-value" id="res-beats">-</span>
+                        <span class="metric-unit">Instants</span>
+                    </div>
+                </div>
+
+                <div class="details-card">
+                    <h4>Rhythmic Breakdown</h4>
+                    <p id="res-details">Waiting for analysis...</p>
+                    <div class="timestamps-box">
+                        <strong>First Few Beat Timestamps (s):</strong>
+                        <p id="res-timestamps">-</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODE 2: ANALYSE MY SINGING -->
+        <section id="mode-sing" class="card" style="display: none;">
+            <h2>Analyse My Singing: Vocal Performance Assessment</h2>
+            <p class="desc">Compare your vocal recording against a reference song using PYIN pitch estimation, DTW intonation error, and stability metrics.</p>
+            
+            <div class="singing-upload-grid">
+                <div class="upload-zone" onclick="document.getElementById('ref-file').click()">
+                    <input type="file" id="ref-file" accept="audio/*" style="display: none;" onchange="handleRefSelect(event)">
+                    <div class="upload-prompt">
+                        <p id="ref-label">📁 Upload Reference Song</p>
+                    </div>
+                </div>
+
+                <div class="upload-zone" onclick="document.getElementById('user-file').click()">
+                    <input type="file" id="user-file" accept="audio/*" style="display: none;" onchange="handleUserSelect(event)">
+                    <div class="upload-prompt">
+                        <p id="user-label">🎤 Upload Your Singing Recording</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="action-btn" id="evaluate-btn" onclick="evaluateSinging()" disabled>Evaluate My Singing</button>
+
+            <div id="singing-loader" class="loader" style="display: none;">
+                <div class="spinner"></div>
+                <p>Running PYIN pitch extraction and DTW alignment...</p>
+            </div>
+
+            <div id="singing-results" class="results-container" style="display: none;">
+                <h3>Vocal Assessment Report</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-title">Overall Score</span>
+                        <span class="metric-value" id="v-score">-</span>
+                        <span class="metric-unit">Out of 100</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-title">Intonation Error</span>
+                        <span class="metric-value" id="v-error">-</span>
+                        <span class="metric-unit">Cents</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-title">Stable Voiced</span>
+                        <span class="metric-value" id="v-stable">-</span>
+                        <span class="metric-unit">%</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-title">Pitch SD / MAD</span>
+                        <span class="metric-value" id="v-sd">-</span>
+                        <span class="metric-unit">Hz</span>
+                    </div>
+                </div>
+
+                <div class="details-card">
+                    <h4>Personalized Feedback & Timing</h4>
+                    <p><strong>Timing Classification:</strong> <span id="v-timing">-</span></p>
+                    <p><strong>Vibrato:</strong> <span id="v-vibrato">-</span></p>
+                    <p><strong>Expert Advice:</strong> <span id="v-feedback" style="color: var(--accent-color);">-</span></p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
